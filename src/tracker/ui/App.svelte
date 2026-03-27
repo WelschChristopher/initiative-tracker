@@ -81,7 +81,6 @@
     <Metadata />
     <Table
         on:edit={(evt) => editOrAdd(evt.detail)}
-        on:open-combatant={(evt) => plugin.openCombatant(evt.detail)}
     />
     <Updating />
     {#if saving}

@@ -71,9 +71,7 @@
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div
         class="name-holder"
-        on:click|stopPropagation={(evt) => {
-            dispatch("open-combatant", creature);
-        }}
+        on:click
         on:mouseenter={tryHover}
         on:mouseleave={cancelHover}
     >

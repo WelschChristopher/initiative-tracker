@@ -7,25 +7,12 @@
     import { Creature, getId } from "src/utils/creature";
     import { createEventDispatcher } from "svelte";
     import { dndzone } from "svelte-dnd-action";
-    import { flip } from "svelte/animate";
 
     import { tracker } from "../../stores/tracker";
     import type InitiativeTracker from "src/main";
-    import { getContext, onDestroy } from "svelte";
+    import { getContext } from "svelte";
 
     const plugin = getContext<InitiativeTracker>("plugin");
-    const { state, ordered } = tracker;
-
-    // Track which creature has its statblock expanded (by name, since IDs change)
-    let expandedCreatureName: string | null = null;
-
-    function toggleExpand(creature: Creature) {
-        if (expandedCreatureName === creature.name) {
-            expandedCreatureName = null;
-        } else {
-            expandedCreatureName = creature.name;
-        }
-    }
 
     function renderStatblock(el: HTMLElement, creature: Creature) {
         el.empty();
@@ -41,6 +28,20 @@
             el.createEl("em", { text: "No statblock available" });
         }
     }
+    const { state, ordered } = tracker;
+
+    // Track which creatures have their statblock expanded
+    let expandedCreatures: Set<string> = new Set();
+
+    function toggleExpand(creature: Creature) {
+        if (expandedCreatures.has(creature.name)) {
+            expandedCreatures.delete(creature.name);
+        } else {
+            expandedCreatures.add(creature.name);
+        }
+        expandedCreatures = expandedCreatures; // trigger reactivity
+    }
+
 
     $: items = [...$ordered].map((c) => {
         return { creature: c, id: getId() };
@@ -122,8 +123,7 @@
                     class:active={$state && creature.active}
                     class:viewing={creature.viewing}
                     class:friendly={creature.friendly}
-                    class:expanded={expandedCreatureName === creature.name}
-                    animate:flip={{ duration: flipDurationMs }}
+                    class:expanded={expandedCreatures.has(creature.name)}
                     data-hp={creature.hp}
                     data-hp-max={creature.current_max}
                     data-hp-percent={Math.round(
@@ -136,27 +136,23 @@
                 >
                     <CreatureTemplate
                         {creature}
-                        expanded={expandedCreatureName === creature.name}
+                        expanded={expandedCreatures.has(creature.name)}
                         on:hp
                         on:tag
                         on:edit
-                        on:open-combatant
                     />
                 </tr>
-            {/each}
-        </tbody>
-        {#if expandedCreatureName}
-            {@const expandedCreature = $ordered.find(c => c.name === expandedCreatureName)}
-            {#if expandedCreature}
-                <tbody class="statblock-tbody">
-                    <tr class="statblock-row">
+                {#if expandedCreatures.has(creature.name)}
+                    <tr class="statblock-row" on:click|stopPropagation>
                         <td colspan="5" class="statblock-cell">
-                            <div class="statblock-container" use:renderStatblock={expandedCreature}></div>
+                            {#key creature.name}
+                                <div class="statblock-container" use:renderStatblock={creature}></div>
+                            {/key}
                         </td>
                     </tr>
-                </tbody>
-            {/if}
-        {/if}
+                {/if}
+            {/each}
+        </tbody>
     {:else}
         <div class="no-creatures">
             <p>Add a creature to get started!</p>
