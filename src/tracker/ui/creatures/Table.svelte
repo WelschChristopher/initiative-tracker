@@ -11,10 +11,36 @@
 
     import { tracker } from "../../stores/tracker";
     import type InitiativeTracker from "src/main";
-    import { getContext } from "svelte";
+    import { getContext, onDestroy } from "svelte";
 
     const plugin = getContext<InitiativeTracker>("plugin");
     const { state, ordered } = tracker;
+
+    // Track which creature has its statblock expanded (by name, since IDs change)
+    let expandedCreatureName: string | null = null;
+
+    function toggleExpand(creature: Creature) {
+        if (expandedCreatureName === creature.name) {
+            expandedCreatureName = null;
+        } else {
+            expandedCreatureName = creature.name;
+        }
+    }
+
+    function renderStatblock(el: HTMLElement, creature: Creature) {
+        el.empty();
+        if (plugin.canUseStatBlocks) {
+            window.FantasyStatblocks?.render(
+                creature.creature,
+                el,
+                creature.display
+            );
+        } else if (creature["statblock-link"]) {
+            el.createEl("em", { text: creature.getStatblockLink() });
+        } else {
+            el.createEl("em", { text: "No statblock available" });
+        }
+    }
 
     $: items = [...$ordered].map((c) => {
         return { creature: c, id: getId() };
@@ -96,6 +122,7 @@
                     class:active={$state && creature.active}
                     class:viewing={creature.viewing}
                     class:friendly={creature.friendly}
+                    class:expanded={expandedCreatureName === creature.name}
                     animate:flip={{ duration: flipDurationMs }}
                     data-hp={creature.hp}
                     data-hp-max={creature.current_max}
@@ -103,12 +130,13 @@
                         ((creature.hp ?? 0) / creature.max) * 100
                     )}
                     on:click={(e) => {
-                        dispatch("open-combatant", creature);
+                        toggleExpand(creature);
                         e.stopPropagation();
                     }}
                 >
                     <CreatureTemplate
                         {creature}
+                        expanded={expandedCreatureName === creature.name}
                         on:hp
                         on:tag
                         on:edit
@@ -117,6 +145,18 @@
                 </tr>
             {/each}
         </tbody>
+        {#if expandedCreatureName}
+            {@const expandedCreature = $ordered.find(c => c.name === expandedCreatureName)}
+            {#if expandedCreature}
+                <tbody class="statblock-tbody">
+                    <tr class="statblock-row">
+                        <td colspan="5" class="statblock-cell">
+                            <div class="statblock-container" use:renderStatblock={expandedCreature}></div>
+                        </td>
+                    </tr>
+                </tbody>
+            {/if}
+        {/if}
     {:else}
         <div class="no-creatures">
             <p>Add a creature to get started!</p>
@@ -187,5 +227,22 @@
     .initiative-tracker-creature:hover :global(td:last-child),
     .initiative-tracker-creature.viewing :global(td:last-child) {
         border-right: 1px solid var(--background-modifier-border);
+    }
+
+    .initiative-tracker-creature.expanded :global(td) {
+        border-bottom: 1px solid var(--background-modifier-border);
+    }
+
+    .statblock-row {
+        background-color: var(--background-secondary);
+    }
+    .statblock-cell {
+        padding: 0.5rem;
+        border: 1px solid var(--background-modifier-border);
+        border-radius: 0 0 0.25rem 0.25rem;
+    }
+    .statblock-container {
+        max-height: 400px;
+        overflow-y: auto;
     }
 </style>

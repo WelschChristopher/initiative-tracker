@@ -12,6 +12,7 @@
     const { updateTarget } = tracker;
 
     export let creature: Creature;
+    export let expanded: boolean = false;
     $: statuses = creature.status;
 
     const name = () => creature.getName();
@@ -82,6 +83,7 @@
         {#if creature.friendly}
             <div class="centered-icon" use:friendlyIcon />
         {/if}
+        <span class="expand-indicator">{expanded ? "▾" : "▸"}</span>
         {#if creature.player}
             <strong class="name player">{creature.name}</strong>
         {:else}
@@ -159,6 +161,11 @@
     .centered-icon {
         display: flex;
         align-items: center;
+    }
+    .expand-indicator {
+        font-size: 0.7em;
+        color: var(--text-muted);
+        min-width: 0.8em;
     }
     .name {
         display: block;
